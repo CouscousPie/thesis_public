@@ -1,0 +1,91 @@
+```{r, echo=FALSE}
+library(tidyverse)
+library(haven)
+library(Hmisc)
+
+path <- ("//wsl.localhost/Ubuntu/home/quent/projects/thesis/data/")
+setwd(path)
+
+pl_raw <- read_dta('pl.dta')
+ppath_raw <- read_dta('ppath.dta') # peronen und haushalte und persoenliches
+bdays <- ppath_raw %>% group_by(pid) %>% distinct(gebjahr)
+
+```
+
+
+
+
+# new approach: use locchildh (plf0009)
+## from pl
+```{r}
+subj_pl_raw <- pl_raw %>% filter(plf0009 > 0, plh0182 > 0)
+subj_pl_raw %>% group_by(syear) %>% count()
+subj_pl_raw %>% group_by(plf0009) %>% count()
+
+subj_pl_bd <- left_join(subj_pl_raw, bdays, by = 'pid')
+subj_pl_age <- subj_pl_bd %>% mutate(
+  age = syear - gebjahr
+)
+
+summary(subj_pl_age$age)
+filter(subj_pl_age, age == 36)
+```
+Key facts
+- 5194 subjects all
+- syear just 1985 !!!
+- contains type of growup place (plf0009)
+- contains movement pattern from that place (plf0010)
+- contains lifesat (plh0182)
+
+furthermore
+- median age of 41
+- 124 people aged 36
+
+### further analysis
+
+```{r}
+
+wdf <- subj_pl_raw %>% group_by(plf0009) #%>% 
+p0 <- boxplot(plh0182 ~ plf0009, data = wdf)
+
+meanframe <- wdf %>%
+  summarise_at(vars(plh0182), list(~ mean(.),
+                                   ~ median(.)))
+
+
+sub_bar <- wdf %>% count(plh0182)
+sub_bar2 <- sub_bar %>%
+  mutate(total = case_when(
+    plf0009 == 1 ~ 1201,
+    plf0009 == 2 ~ 688,
+    plf0009 == 3 ~ 1111,
+    plf0009 == 4 ~ 2194)) %>% 
+  mutate(prop = n*100/total)
+
+
+p1 <- ggplot(sub_bar2) + 
+  aes(x = plh0182, y = prop, col = as_factor(plf0009)) + 
+  geom_point()
+
+p2 <- ggplot(sub_bar2) +
+    aes(x = plf0009, y = plh0182, col = as_factor(plf0009), size=prop) + 
+    geom_point()
+
+p3 <- ggplot(sub_bar2) +
+    aes(x = plh0182, y = prop, col = as_factor(plf0009), size=n) + 
+    geom_point()
+
+
+p4 <- ggplot(sub_bar2) +
+    aes(x = plh0182, y = prop, fill = as_factor(plf0009))  +
+    geom_bar(stat = 'identity', position = position_dodge())
+
+meanframe
+p0
+p1
+p2
+p3
+p4
+
+```
+
